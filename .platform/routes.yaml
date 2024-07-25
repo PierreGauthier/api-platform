@@ -1,0 +1,23 @@
+https://{default}/:
+  id: admin
+  cache:
+    cookies:
+        - '*'
+    default_ttl: 0
+    enabled: true
+    headers:
+        - Accept
+        - Accept-Language
+  ssi:
+    enabled: false
+  type: upstream
+  upstream: pwa:http
+
+https://api.{default}/:
+    id: api
+    cache:
+        enabled: false
+    ssi:
+        enabled: false
+    type: upstream
+    upstream: api:http
