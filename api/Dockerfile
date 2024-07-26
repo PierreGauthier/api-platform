@@ -2,18 +2,16 @@
 
 # Adapted from https://github.com/dunglas/symfony-docker
 
-
 # Versions
-FROM dunglas/frankenphp:1-php8.3 AS frankenphp_upstream
-
+FROM php:8.3-fpm AS php_upstream
 
 # The different stages of this Dockerfile are meant to be built into separate images
 # https://docs.docker.com/develop/develop-images/multistage-build/#stop-at-a-specific-build-stage
 # https://docs.docker.com/compose/compose-file/#target
 
 
-# Base FrankenPHP image
-FROM frankenphp_upstream AS frankenphp_base
+# Base php image
+FROM php_upstream AS php_base
 
 WORKDIR /app
 
@@ -21,6 +19,7 @@ WORKDIR /app
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install --no-install-recommends -y \
 	acl \
+    libfcgi-bin \
 	file \
 	gettext \
 	git \
@@ -28,6 +27,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
+
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
 RUN set -eux; \
 	install-php-extensions \
@@ -45,17 +46,17 @@ RUN set -eux; \
 ###< doctrine/doctrine-bundle ###
 ###< recipes ###
 
-COPY --link frankenphp/conf.d/app.ini $PHP_INI_DIR/conf.d/
-COPY --link --chmod=755 frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
-COPY --link frankenphp/Caddyfile /etc/caddy/Caddyfile
+COPY --link php-fpm/conf.d/app.ini $PHP_INI_DIR/conf.d/
+COPY --link --chmod=755 php-fpm/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+COPY --link php-fpm/php-fpm.d/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
 
 ENTRYPOINT ["docker-entrypoint"]
 
-HEALTHCHECK --start-period=60s CMD curl -f http://localhost:2019/metrics || exit 1
-CMD [ "frankenphp", "run", "--config", "/etc/caddy/Caddyfile" ]
+HEALTHCHECK --start-period=60s CMD env -i REQUEST_METHOD=GET SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping cgi-fcgi -bind -connect 127.0.0.1:9000 || exit 1
+CMD ["php-fpm"]
 
-# Dev FrankenPHP image
-FROM frankenphp_base AS frankenphp_dev
+# Dev php image
+FROM php_base AS php_dev
 
 ENV APP_ENV=dev XDEBUG_MODE=off
 VOLUME /app/var/
@@ -67,20 +68,18 @@ RUN set -eux; \
 		xdebug \
 	;
 
-COPY --link frankenphp/conf.d/app.dev.ini $PHP_INI_DIR/conf.d/
+COPY --link php-fpm/conf.d/app.dev.ini $PHP_INI_DIR/conf.d/
 
-CMD [ "frankenphp", "run", "--config", "/etc/caddy/Caddyfile", "--watch" ]
+CMD ["php-fpm"]
 
-# Prod FrankenPHP image
-FROM frankenphp_base AS frankenphp_prod
+# Prod php image
+FROM php_base AS php_prod
 
 ENV APP_ENV=prod
-ENV FRANKENPHP_CONFIG="import worker.Caddyfile"
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-COPY --link frankenphp/conf.d/app.prod.ini $PHP_INI_DIR/conf.d/
-COPY --link frankenphp/worker.Caddyfile /etc/caddy/worker.Caddyfile
+COPY --link php-fpm/conf.d/app.prod.ini $PHP_INI_DIR/conf.d/
 
 # prevent the reinstallation of vendors at every changes in the source code
 COPY --link composer.* symfony.* ./
@@ -89,7 +88,7 @@ RUN set -eux; \
 
 # copy sources
 COPY --link . ./
-RUN rm -Rf frankenphp/
+RUN rm -Rf php-fpm/
 
 RUN set -eux; \
 	mkdir -p var/cache var/log; \

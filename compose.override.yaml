@@ -1,14 +1,26 @@
 # Development environment override
 services:
+  proxy:
+    volumes:
+      - ./docker/certs:/etc/nginx/certs
+
+  varnish:
+    build:
+      context: ./docker/varnish
+
+  router:
+    image: nginx:latest
+    volumes:
+      - ./api/public:/app/public
+
   php:
     build:
       context: ./api
-      target: frankenphp_dev
+      target: php_dev
     volumes:
       - ./api:/app
       - /app/var
-      - ./api/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./api/frankenphp/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro
+      - ./api/php-fpm/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro
       # If you develop on Mac or Windows you can remove the vendor/ directory
       #  from the bind-mount for better performance by enabling the next line:
       #- /app/vendor
@@ -16,6 +28,7 @@ services:
       MERCURE_EXTRA_DIRECTIVES: demo
       # See https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+      PHP_IDE_CONFIG: serverName=${SERVER_NAME-localhost}
     extra_hosts:
       # Ensure that host.docker.internal is correctly defined on Linux
       - host.docker.internal:host-gateway

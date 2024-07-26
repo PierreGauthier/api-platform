@@ -1,5 +1,42 @@
 services:
-  php:
+  proxy:
+    image: nginx:latest
+    ports:
+      - "443:443"
+    volumes:
+      - ./docker/proxy/templates:/etc/nginx/templates:ro
+    depends_on:
+      - varnish
+    environment:
+      - SERVER_NAME=${SERVER_NAME-localhost}
+      - BACKEND_UPSTREAM=varnish:80
+
+  varnish:
+    image: ${IMAGES_PREFIX:-}app-varnish
+    volumes:
+      - ./docker/varnish/default.vcl:/etc/varnish/default.vcl.template:ro
+    depends_on:
+      - router
+    environment:
+      - SERVER_NAME=${SERVER_NAME-localhost}
+      - BACKEND_HOST=router
+      - BACKEND_PORT=80
+      - PHP_UPSTREAM=${PHP_UPSTREAM:-php:9000}
+
+  router:
+    image: nginx:latest
+    volumes:
+      - ./docker/router/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/router/templates:/etc/nginx/templates:ro
+    depends_on:
+      - php
+    environment:
+      - SERVER_NAME=${SERVER_NAME:-localhost}
+      - API_UPSTREAM=${API_UPSTREAM:-php:9000}
+      - PWA_UPSTREAM=${PWA_UPSTREAM:-pwa:3000}
+      - EXAMPLE_UPSTREAM=${EXAMPLE_UPSTREAM:-example:3001}
+  
+  php:  
     image: ${IMAGES_PREFIX:-}app-php
     depends_on:
       - database
@@ -15,22 +52,6 @@ services:
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
       MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://${SERVER_NAME:-localhost}/.well-known/mercure}
       MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-    ports:
-      # HTTP
-      - target: 80
-        published: ${HTTP_PORT:-80}
-        protocol: tcp
-      # HTTPS
-      - target: 443
-        published: ${HTTPS_PORT:-443}
-        protocol: tcp
-      # HTTP/3
-      - target: 443
-        published: ${HTTP3_PORT:-443}
-        protocol: udp
 
   pwa:
     image: ${IMAGES_PREFIX:-}app-pwa
@@ -51,13 +72,7 @@ services:
       # - ./api/docker/db/data:/var/lib/postgresql/data
 ###< doctrine/doctrine-bundle ###
 
-# Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
-###> symfony/mercure-bundle ###
-###< symfony/mercure-bundle ###
-
 volumes:
-  caddy_data:
-  caddy_config:
 ###> doctrine/doctrine-bundle ###
   db_data:
 ###< doctrine/doctrine-bundle ###
