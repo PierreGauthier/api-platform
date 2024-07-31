@@ -1,6 +1,8 @@
 import Head from "next/head";
 import { useEffect, useState } from "react";
 
+const backUrl = process.env.API_SERVER_NAME
+
 const Admin = () => {
   // Load the admin client-side
   const [DynamicAdmin, setDynamicAdmin] = useState(<p>Loading...</p>);
@@ -8,7 +10,7 @@ const Admin = () => {
     (async () => {
       const HydraAdmin = (await import("@api-platform/admin")).HydraAdmin;
 
-      setDynamicAdmin(<HydraAdmin entrypoint={window.origin}></HydraAdmin>);
+      setDynamicAdmin(<HydraAdmin entrypoint={backUrl}></HydraAdmin>);
     })();
   }, []);
 

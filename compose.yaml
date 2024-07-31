@@ -8,8 +8,9 @@ services:
     depends_on:
       - varnish
     environment:
-      - SERVER_NAME=${SERVER_NAME-localhost}
-      - BACKEND_UPSTREAM=varnish:80
+      - API_SERVER_NAME=${API_SERVER_NAME:-api.localhost}
+      - PWA_SERVER_NAME=${PWA_SERVER_NAME:-localhost}
+      - BACKEND_UPSTREAM=router:80
 
   varnish:
     image: ${IMAGES_PREFIX:-}app-varnish
@@ -18,7 +19,6 @@ services:
     depends_on:
       - router
     environment:
-      - SERVER_NAME=${SERVER_NAME-localhost}
       - BACKEND_HOST=router
       - BACKEND_PORT=80
       - PHP_UPSTREAM=${PHP_UPSTREAM:-php:9000}
@@ -31,10 +31,10 @@ services:
     depends_on:
       - php
     environment:
-      - SERVER_NAME=${SERVER_NAME:-localhost}
+      - API_SERVER_NAME=${API_SERVER_NAME:-api.localhost}
+      - PWA_SERVER_NAME=${PWA_SERVER_NAME:-localhost}
       - API_UPSTREAM=${API_UPSTREAM:-php:9000}
       - PWA_UPSTREAM=${PWA_UPSTREAM:-pwa:3000}
-      - EXAMPLE_UPSTREAM=${EXAMPLE_UPSTREAM:-example:3001}
   
   php:  
     image: ${IMAGES_PREFIX:-}app-php
@@ -43,15 +43,17 @@ services:
     restart: unless-stopped
     environment:
       PWA_UPSTREAM: pwa:3000
-      SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
+      SERVER_NAME: ${API_SERVER_NAME:-api.localhost}, php:80
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
-      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-^${SERVER_NAME:-example\.com|localhost}|php$$}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-^${API_SERVER_NAME:-example\.com|api.localhost}|php$$}
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=${POSTGRES_CHARSET:-utf8}
+      CORS_ALLOW_ORIGIN: ^https?://${PWA_SERVER_NAME:-localhost}$
 
   pwa:
     image: ${IMAGES_PREFIX:-}app-pwa
     environment:
       NEXT_PUBLIC_ENTRYPOINT: http://php
+      API_SERVER_NAME: https://${API_SERVER_NAME:-api.localhost}
 
 ###> doctrine/doctrine-bundle ###
   database:

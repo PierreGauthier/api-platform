@@ -27,7 +27,7 @@ services:
     environment:
       # See https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: "${XDEBUG_MODE:-off}"
-      PHP_IDE_CONFIG: serverName=${SERVER_NAME-localhost}
+      PHP_IDE_CONFIG: serverName=${API_SERVER_NAME-api.localhost}
     extra_hosts:
       # Ensure that host.docker.internal is correctly defined on Linux
       - host.docker.internal:host-gateway
@@ -40,7 +40,7 @@ services:
     volumes:
       - ./pwa:/srv/app
     environment:
-      API_PLATFORM_CREATE_CLIENT_ENTRYPOINT: http://php
+      API_PLATFORM_CREATE_CLIENT_ENTRYPOINT: ${API_SERVER_NAME-api.localhost}
       API_PLATFORM_CREATE_CLIENT_OUTPUT: .
       # On Linux, you may want to comment the following line for improved performance
       WATCHPACK_POLLING: "true"
