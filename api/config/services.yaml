@@ -22,3 +22,16 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    App\Service\AddBlopType:
+        decorates: api_platform.graphql.type_builder
+        arguments:
+            - '@api_platform.graphql.types_container'
+            - '@.inner'
+                
+    App\Service\AddBlopData:
+        decorates: api_platform.graphql.state_processor.normalize
+        decoration_priority: 10
+        arguments:
+            - '@.inner'
+
