@@ -5,6 +5,7 @@ services:
       - "443:443"
     volumes:
       - ./docker/proxy/templates:/etc/nginx/templates:ro
+      - ./docker/certs:/etc/nginx/certs:ro #todo check how to manage ssl on prod !
     depends_on:
       - varnish
     environment:
@@ -28,6 +29,7 @@ services:
     volumes:
       - ./docker/router/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/router/templates:/etc/nginx/templates:ro
+      - ./api/public:/app/public
     depends_on:
       - php
     environment:
@@ -36,12 +38,15 @@ services:
       - API_UPSTREAM=${API_UPSTREAM:-php:9000}
       - PWA_UPSTREAM=${PWA_UPSTREAM:-pwa:3000}
   
-  php:  
-    image: ${IMAGES_PREFIX:-}app-php
+  php:
+    build:
+      context: ./api
+      target: php_prod
     depends_on:
       - database
     restart: unless-stopped
     environment:
+      APP_SECRET: ${APP_SECRET}
       PWA_UPSTREAM: pwa:3000
       SERVER_NAME: ${API_SERVER_NAME:-api.localhost}, php:80
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
@@ -50,18 +55,21 @@ services:
       CORS_ALLOW_ORIGIN: ^https?://${PWA_SERVER_NAME:-localhost}$
 
   pwa:
-    image: ${IMAGES_PREFIX:-}app-pwa
+    build:
+      context: ./pwa
+      target: prod
+      args:
+        NEXT_PUBLIC_API_BASE_URL: https://${API_SERVER_NAME:-localhost}
     environment:
       NEXT_PUBLIC_ENTRYPOINT: http://php
-      API_SERVER_NAME: https://${API_SERVER_NAME:-api.localhost}
-
-###> doctrine/doctrine-bundle ###
+  
+  ###> doctrine/doctrine-bundle ###
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-app}
       # You should definitely change the password in production
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-!ChangeMe!}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_USER=${POSTGRES_USER:-app}
     volumes:
       - db_data:/var/lib/postgresql/data

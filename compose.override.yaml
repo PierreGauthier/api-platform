@@ -8,11 +8,6 @@ services:
     build:
       context: ./docker/varnish
 
-  router:
-    image: nginx:latest
-    volumes:
-      - ./api/public:/app/public
-
   php:
     build:
       context: ./api
@@ -22,8 +17,9 @@ services:
       - /app/var
       - ./api/php-fpm/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro
     environment:
+      APP_SECRET: ${XDEBUG_MODE:-!ChangeMe!}
       # See https://xdebug.org/docs/all_settings#mode
-      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}
     extra_hosts:
       # Ensure that host.docker.internal is correctly defined on Linux
       - host.docker.internal:host-gateway
@@ -43,6 +39,8 @@ services:
 
 ###> doctrine/doctrine-bundle ###
   database:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
     ports:
       - target: 5432
         published: 5432

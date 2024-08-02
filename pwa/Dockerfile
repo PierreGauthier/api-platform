@@ -36,6 +36,8 @@ CMD ["sh", "-c", "pnpm install; pnpm dev"]
 
 FROM base AS builder
 
+ARG NEXT_PUBLIC_API_BASE_URL
+
 COPY --link pnpm-lock.yaml ./
 RUN pnpm fetch --prod
 

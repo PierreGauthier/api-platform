@@ -1,7 +1,7 @@
 import Head from "next/head";
 import { useEffect, useState } from "react";
 
-const backUrl = process.env.API_SERVER_NAME
+const backUrl = process.env.NEXT_PUBLIC_API_BASE_URL || window.origin
 
 const Admin = () => {
   // Load the admin client-side

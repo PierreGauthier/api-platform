@@ -4,7 +4,7 @@ const nextConfig = {
   swcMinify: true,
   output: 'standalone',
   env: {
-    API_SERVER_NAME: process.env.API_SERVER_NAME,
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL
   }
 }
 
